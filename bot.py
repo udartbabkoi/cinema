@@ -1,5 +1,6 @@
 ﻿import asyncio
 import logging
+import os
 import sys
 import requests
 from datetime import datetime, timedelta
@@ -17,16 +18,12 @@ LOCATIONS = {
 }
 
 def load_tokens():
-    try:
-        with open("tokens.txt", "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f.readlines() if line.strip()]
-        if len(lines) < 2:
-            logging.error("Помилка: У файлі tokens.txt має бути мінімум 2 рядки!")
-            sys.exit(1)
-        return lines[0], lines[1]
-    except FileNotFoundError:
-        logging.error("Помилка: Файл tokens.txt не знайдено!")
+    token = os.environ.get("TELEGRAM_TOKEN")
+    groq_key = os.environ.get("GROQ_API_KEY")
+    if not token or not groq_key:
+        logging.error("Помилка: TELEGRAM_TOKEN або GROQ_API_KEY не задано!")
         sys.exit(1)
+    return token, groq_key
 
 TELEGRAM_TOKEN, GROQ_API_KEY = load_tokens()
 bot = Bot(token=TELEGRAM_TOKEN)
@@ -108,9 +105,6 @@ async def cinema_parser_task():
             try:
                 result = await task
                 cached_cinema_data[name] = result
-                safe_name = LOCATIONS[name]["city"].lower().replace(" ", "_")
-                with open(f"cinema_data_{safe_name}.txt", "w", encoding="utf-8") as f:
-                    f.write(result)
                 logging.info(f"Фоновий парсер: '{name}' — розклад оновлено ✓")
             except Exception as e:
                 logging.error(f"Фоновий парсер: помилка для '{name}': {e}")
